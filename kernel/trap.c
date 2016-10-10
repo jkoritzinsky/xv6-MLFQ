@@ -49,6 +49,7 @@ trap(struct trapframe *tf)
     if(cpu->id == 0){
       acquire(&tickslock);
       ticks++;
+      proc->ticks[proc->priority]++;
       wakeup(&ticks);
       release(&tickslock);
     }
