@@ -26,7 +26,7 @@ CFLAGS += -Wall
 # treat warnings as errors
 CFLAGS += -Werror
 # produce debugging information for use by gdb
-CFLAGS += -ggdb
+CFLAGS += -ggdb -g
 
 # uncomment to enable optimizations. improves performance, but may make
 # debugging more difficult
@@ -80,7 +80,7 @@ QEMUGDB := $(shell if $(QEMU) -help | grep -q '^-gdb'; \
 
 # number of CPUs to emulate in QEMU
 ifndef CPUS
-CPUS := 2
+CPUS := 1
 endif
 
 QEMUOPTS := -hdb fs.img xv6.img -smp $(CPUS)

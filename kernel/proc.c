@@ -67,6 +67,8 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
+  p->priority = 0;
+  p->ticks[0] = p->ticks[1] = p->ticks[2] = p->ticks[3] = 0;
 
   return p;
 }
@@ -255,7 +257,10 @@ wait(void)
 void
 scheduler(void)
 {
-  struct proc *p;
+  int i;
+  int j;
+  int lastScheduled = -1;
+  //struct proc *procToSchedForPriority[4] = {0};
 
   for(;;){
     // Enable interrupts on this processor.
@@ -263,22 +268,12 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
-      swtch(&cpu->scheduler, proc->context);
-      switchkvm();
+    // Priority bump
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      proc = 0;
+    for(i = (lastScheduled + 1) % NPROC, j = 0; i != lastScheduled && j < NPROC; i = (i + 1) % NPROC, ++j){
+      // Find first of each priority
+      // Run highest priority
     }
     release(&ptable.lock);
 
