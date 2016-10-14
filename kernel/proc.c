@@ -17,6 +17,8 @@ int nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
 
+extern uint ticks;
+
 static void wakeup1(void *chan);
 
 void
@@ -260,7 +262,6 @@ scheduler(void)
   int i;
   int j;
   int lastScheduled = -1;
-  //struct proc *procToSchedForPriority[4] = {0};
 
   for(;;){
     // Enable interrupts on this processor.
@@ -269,12 +270,49 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
 
-    // Priority bump
+    // Priority boost
+    if(ticks % 100){
+      for(j = 0; j < NPROC; ++j){
+        if(ptable.proc[j].priority > 0 && ptable.proc[j].lastScheduledOnTick - ticks >= 100)
+          ptable.proc[j].priority--;
+      }
+    }
+
+    struct proc *procToSchedForPriority[4] = {0};
 
     for(i = (lastScheduled + 1) % NPROC, j = 0; i != lastScheduled && j < NPROC; i = (i + 1) % NPROC, ++j){
-      // Find first of each priority
-      // Run highest priority
+      if(ptable.proc[i].state == RUNNABLE){
+        if(!procToSchedForPriority[ptable.proc[i].priority]){
+          procToSchedForPriority[ptable.proc[i].priority] = &ptable.proc[i];
+        }
+      }
     }
+    // Run highest priority
+    int priority;
+    struct proc *p = 0;
+    for(priority = 0; priority < 4; ++priority){
+      if(procToSchedForPriority[priority]){
+        p = procToSchedForPriority[priority];
+        break;
+      }
+    }
+    (void)p;
+    
+    if(p){
+      p->lastScheduledOnTick = ticks;
+      // Switch to chosen process.  It is the process's job
+      // to release ptable.lock and then reacquire it
+      // before jumping back to us.
+      proc = p;
+      switchuvm(p);
+      p->state = RUNNING;
+      swtch(&cpu->scheduler, proc->context);
+      switchkvm();
+    }
+    
+    // Process is done running for now.
+    // It should have changed its p->state before coming back.
+    proc = 0;
     release(&ptable.lock);
 
   }
