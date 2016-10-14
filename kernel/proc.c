@@ -545,6 +545,6 @@ getpinfo(struct pstat* pstat)
     ++i;
   }
   release(&ptable.lock);
-  return -1;
+  return 0;
 }
 
