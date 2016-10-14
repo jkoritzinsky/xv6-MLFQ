@@ -79,6 +79,9 @@ struct proc {
   int lastScheduledOnTick;
 };
 
+struct pstat;
+int getpinfo(struct pstat* pstat);
+
 // Process memory is laid out contiguously, low addresses first:
 //   text
 //   original data and bss

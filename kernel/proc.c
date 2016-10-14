@@ -5,6 +5,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "../include/pstat.h"
 
 struct {
   struct spinlock lock;
@@ -267,13 +268,17 @@ scheduler(void)
     // Enable interrupts on this processor.
     sti();
 
+    uint xticks;
+    acquire(&tickslock);
+    xticks = ticks;
+    release(&tickslock);
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
 
     // Priority boost
-    if(ticks % 100){
+    if(xticks % 100){
       for(j = 0; j < NPROC; ++j){
-        if(ptable.proc[j].priority > 0 && ptable.proc[j].lastScheduledOnTick - ticks >= 100)
+        if(ptable.proc[j].priority > 0 && ptable.proc[j].lastScheduledOnTick - xticks >= 100)
           ptable.proc[j].priority--;
       }
     }
@@ -342,7 +347,7 @@ scheduler(void)
     }
     
     if(p){
-      p->lastScheduledOnTick = ticks;
+      p->lastScheduledOnTick = xticks;
       lastScheduled = i;
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -520,4 +525,26 @@ procdump(void)
   }
 }
 
+int
+getpinfo(struct pstat* pstat)
+{
+  struct proc *p;
+  int i = 0;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state == UNUSED)
+      continue;
+    pstat->inuse[i] = 1;
+    pstat->pid[i] = p->pid;
+    pstat->priority[i] = p->priority;
+    pstat->state[i] = p->state;
+    int j;
+    for(j = 0; j < 4; ++j){
+      pstat->ticks[i][j] = p->ticks[j];
+    }
+    ++i;
+  }
+  release(&ptable.lock);
+  return -1;
+}
 
