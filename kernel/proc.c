@@ -279,7 +279,6 @@ scheduler(void)
     }
 
     struct proc *procToSchedForPriority[4] = {0};
-
     for(i = (lastScheduled + 1) % NPROC, j = 0; i != lastScheduled && j < NPROC; i = (i + 1) % NPROC, ++j){
       if(ptable.proc[i].state == RUNNABLE){
         if(!procToSchedForPriority[ptable.proc[i].priority]){
@@ -287,6 +286,8 @@ scheduler(void)
         }
       }
     }
+    
+    //cprintf("lastScheduled:%d, j:%d, i:%d\n", lastScheduled, j, i);
     // Run highest priority
     int priority;
     struct proc *p = 0;
@@ -300,6 +301,7 @@ scheduler(void)
     
     if(p){
       p->lastScheduledOnTick = ticks;
+      //lastScheduled = i;
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
@@ -308,8 +310,22 @@ scheduler(void)
       p->state = RUNNING;
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
+      
+      // Priority Bump
+      switch(proc->priority){
+        case 0:
+        case 1:
+          proc->priority += (proc->ticks[proc->priority] % 5 == 0);
+          break;
+        case 2:
+          proc->priority += (proc->ticks[proc->priority] % 10 == 0);
+          break;
+        case 3:
+          proc->priority += (proc->ticks[proc->priority] % 20 == 0);
+          break;
+      }
     }
-    
+
     // Process is done running for now.
     // It should have changed its p->state before coming back.
     proc = 0;
