@@ -286,22 +286,64 @@ scheduler(void)
         }
       }
     }
-    
-    //cprintf("lastScheduled:%d, j:%d, i:%d\n", lastScheduled, j, i);
+    struct proc *p = 0;
+
     // Run highest priority
     int priority;
-    struct proc *p = 0;
-    for(priority = 0; priority < 4; ++priority){
+    int lowestPriorityToSearch = lastScheduled == -1 ? 4 : ptable.proc[i].priority;
+    for(priority = 0; priority < lowestPriorityToSearch; ++priority){
       if(procToSchedForPriority[priority]){
         p = procToSchedForPriority[priority];
         break;
       }
     }
-    (void)p;
+    
+    if(!p){
+      // Check if time-slice of last scheduled proc complete
+      // If so, bump priority and schedule next proc at same or lower priority
+      // If not, then look through rest of priorities
+      int timeSliceComplete;
+      switch(ptable.proc[lastScheduled].priority){
+        case 0:
+        case 1:
+          timeSliceComplete = (ptable.proc[lastScheduled].ticks[ptable.proc[lastScheduled].priority] % 5 == 0);
+          break;
+        case 2:
+          timeSliceComplete = (ptable.proc[lastScheduled].ticks[ptable.proc[lastScheduled].priority] % 10 == 0);
+          break;
+        case 3:
+          timeSliceComplete = (ptable.proc[lastScheduled].ticks[ptable.proc[lastScheduled].priority] % 20 == 0);
+          break;
+      }
+      if(ptable.proc[lastScheduled].priority < 3){
+        ptable.proc[lastScheduled].priority += timeSliceComplete;
+      }
+      if(!timeSliceComplete){
+        p = &ptable.proc[lastScheduled];
+      }
+      else{
+        // If there is no other proc at the last scheduled proc's priority,
+        // then we want to put the last run proc as the proc to run for that priority
+        if(!procToSchedForPriority[ptable.proc[lastScheduled].priority])
+          procToSchedForPriority[ptable.proc[lastScheduled].priority] = &ptable.proc[lastScheduled];
+        // Check the rest of the priorities for a proc to run
+        for(; priority < 4; ++priority){
+          if(procToSchedForPriority[priority]){
+             p = procToSchedForPriority[priority];
+             break;
+          }
+        }
+      }
+
+      if(!p){
+        // If still nothing else, then reschedule
+        p = &ptable.proc[lastScheduled];
+      }
+    }
     
     if(p){
       p->lastScheduledOnTick = ticks;
-      //lastScheduled = i;
+      lastScheduled = i;
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
@@ -310,20 +352,6 @@ scheduler(void)
       p->state = RUNNING;
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
-      
-      // Priority Bump
-      switch(proc->priority){
-        case 0:
-        case 1:
-          proc->priority += (proc->ticks[proc->priority] % 5 == 0);
-          break;
-        case 2:
-          proc->priority += (proc->ticks[proc->priority] % 10 == 0);
-          break;
-        case 3:
-          proc->priority += (proc->ticks[proc->priority] % 20 == 0);
-          break;
-      }
     }
 
     // Process is done running for now.
