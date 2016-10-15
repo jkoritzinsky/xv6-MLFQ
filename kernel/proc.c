@@ -274,14 +274,8 @@ scheduler(void)
     release(&tickslock);
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
+    // TODO: Priority boost
 
-    // Priority boost
-    if(xticks % 100){
-      for(j = 0; j < NPROC; ++j){
-        if(ptable.proc[j].priority > 0 && ptable.proc[j].lastScheduledOnTick - xticks >= 100 && j != lastScheduled)
-          ptable.proc[j].priority--;
-      }
-    }
 
     struct proc *procToSchedForPriority[4] = {0};
     for(i = (lastScheduled + 1) % NPROC, j = 0; i != lastScheduled && j < NPROC; i = (i + 1) % NPROC, ++j){
@@ -322,16 +316,8 @@ scheduler(void)
           break;
       }
 
-      if(ptable.proc[lastScheduled].pid == 2) {
-cprintf("Pid: %d, Priority: %d, Pticks: %d, Time Slice Complete: %d\n", ptable.proc[lastScheduled].pid, ptable.proc[lastScheduled].priority, pticks, timeSliceComplete);
-      }
-
       if(ptable.proc[lastScheduled].priority < 3){
         ptable.proc[lastScheduled].priority += timeSliceComplete;
-      }
-
-      if(ptable.proc[lastScheduled].pid == 2) {
-      cprintf("Pid: %d, Priority: %d\n", ptable.proc[lastScheduled].pid, ptable.proc[lastScheduled].priority);
       }
 
       if(!timeSliceComplete && ptable.proc[lastScheduled].state == RUNNABLE){
@@ -549,7 +535,6 @@ getpinfo(struct pstat* pstat)
     pstat->pid[i] = p->pid;
     pstat->priority[i] = p->priority;
     pstat->state[i] = p->state;
-    cprintf("pid:%d, priority:%d\n", p->pid, p->priority);
     int j;
     for(j = 0; j < 4; ++j){
       pstat->ticks[i][j] = p->ticks[j];
