@@ -278,7 +278,7 @@ scheduler(void)
     // Priority boost
     if(xticks % 100){
       for(j = 0; j < NPROC; ++j){
-        if(ptable.proc[j].priority > 0 && ptable.proc[j].lastScheduledOnTick - xticks >= 100)
+        if(ptable.proc[j].priority > 0 && ptable.proc[j].lastScheduledOnTick - xticks >= 100 && j != lastScheduled)
           ptable.proc[j].priority--;
       }
     }
@@ -302,34 +302,45 @@ scheduler(void)
         break;
       }
     }
-    
     if(!p){
       // Check if time-slice of last scheduled proc complete
       // If so, bump priority and schedule next proc at same or lower priority
       // If not, then look through rest of priorities
       int timeSliceComplete;
+      int pticks = ptable.proc[lastScheduled].ticks[ptable.proc[lastScheduled].priority];
       switch(ptable.proc[lastScheduled].priority){
         case 0:
         case 1:
-          timeSliceComplete = (ptable.proc[lastScheduled].ticks[ptable.proc[lastScheduled].priority] % 5 == 0);
+          timeSliceComplete = (pticks % 5 == 0 && pticks != 0);
+          
           break;
         case 2:
-          timeSliceComplete = (ptable.proc[lastScheduled].ticks[ptable.proc[lastScheduled].priority] % 10 == 0);
+          timeSliceComplete = (pticks % 10 == 0 && pticks != 0);
           break;
         case 3:
-          timeSliceComplete = (ptable.proc[lastScheduled].ticks[ptable.proc[lastScheduled].priority] % 20 == 0);
+          timeSliceComplete = (pticks % 20 == 0 && pticks != 0);
           break;
       }
+
+      if(ptable.proc[lastScheduled].pid == 2) {
+cprintf("Pid: %d, Priority: %d, Pticks: %d, Time Slice Complete: %d\n", ptable.proc[lastScheduled].pid, ptable.proc[lastScheduled].priority, pticks, timeSliceComplete);
+      }
+
       if(ptable.proc[lastScheduled].priority < 3){
         ptable.proc[lastScheduled].priority += timeSliceComplete;
       }
-      if(!timeSliceComplete){
+
+      if(ptable.proc[lastScheduled].pid == 2) {
+      cprintf("Pid: %d, Priority: %d\n", ptable.proc[lastScheduled].pid, ptable.proc[lastScheduled].priority);
+      }
+
+      if(!timeSliceComplete && ptable.proc[lastScheduled].state == RUNNABLE){
         p = &ptable.proc[lastScheduled];
       }
       else{
         // If there is no other proc at the last scheduled proc's priority,
         // then we want to put the last run proc as the proc to run for that priority
-        if(!procToSchedForPriority[ptable.proc[lastScheduled].priority])
+        if(!procToSchedForPriority[ptable.proc[lastScheduled].priority] && ptable.proc[lastScheduled].state == RUNNABLE)
           procToSchedForPriority[ptable.proc[lastScheduled].priority] = &ptable.proc[lastScheduled];
         // Check the rest of the priorities for a proc to run
         for(; priority < 4; ++priority){
@@ -348,7 +359,7 @@ scheduler(void)
     
     if(p){
       p->lastScheduledOnTick = xticks;
-      lastScheduled = i;
+      lastScheduled = p - ptable.proc;
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
@@ -538,6 +549,7 @@ getpinfo(struct pstat* pstat)
     pstat->pid[i] = p->pid;
     pstat->priority[i] = p->priority;
     pstat->state[i] = p->state;
+    cprintf("pid:%d, priority:%d\n", p->pid, p->priority);
     int j;
     for(j = 0; j < 4; ++j){
       pstat->ticks[i][j] = p->ticks[j];
