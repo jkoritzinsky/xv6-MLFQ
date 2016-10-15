@@ -274,8 +274,17 @@ scheduler(void)
     release(&tickslock);
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    // TODO: Priority boost
 
+
+      // Priority boost
+      if(xticks % 100 == 0){
+        for(j = 0; j < NPROC; ++j){
+          if(j == lastScheduled || ptable.proc[j].state != RUNNABLE) continue;
+          if(ptable.proc[j].priority > 0 && xticks - ptable.proc[j].lastScheduledOnTick >= 100){
+            ptable.proc[j].priority--;
+          }
+        }
+      }
 
     struct proc *procToSchedForPriority[4] = {0};
     for(i = (lastScheduled + 1) % NPROC, j = 0; i != lastScheduled && j < NPROC; i = (i + 1) % NPROC, ++j){
@@ -342,10 +351,11 @@ scheduler(void)
         p = &ptable.proc[lastScheduled];
       }
     }
-    
+
     if(p){
       p->lastScheduledOnTick = xticks;
       lastScheduled = p - ptable.proc;
+
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
