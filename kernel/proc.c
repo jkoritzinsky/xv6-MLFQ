@@ -72,7 +72,7 @@ found:
   p->context->eip = (uint)forkret;
   p->priority = 0;
   p->ticks[0] = p->ticks[1] = p->ticks[2] = p->ticks[3] = 0;
-
+  p->lastScheduledOnTick = 0;
   return p;
 }
 
