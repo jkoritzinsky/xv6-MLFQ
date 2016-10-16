@@ -1,0 +1,11 @@
+Graph design: each point on the graph represents when a process is scheduled to run. Is either 1/2 a point size at priority 0,1; a full point size at priority 2; and 2 point sizes at priority 3.
+We decided to graph with this design because otherwise all of the points overlapped and made the graph very difficult to read when not zoomed in extremely closely.
+
+graph1: A round robin of 4 processes, showing that our scheduler can correctly downgrade a processes priority and correctly round-robin on the lowest priority.
+
+graph2: Running 10 processes to show that our priority upgrade works correctly.
+
+graph3: Run 10 processes with a small workload initially to push some to priority 1 and then sleep. This graph shows our scheduler being able to preempt a lower priority process with a higher priority process.
+
+
+NOTE: For graphs 2 and 3 we only graphed 6 processes to make the graph more discernable. With 10 processes, the graphs became extremely cluttered and difficult to read no matter what settings we used.
